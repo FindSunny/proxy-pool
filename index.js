@@ -1,3 +1,8 @@
+// 工作池相关
+const WorkerPool = require('./worker_pool.js');
+const os = require('os');
+// 创建工作池(取CPU核心数量)
+const pool = new WorkerPool(os.cpus().length);
 
 const redis = require('redis');
 const ProxyUtils = require('./utils/ProxyUtils.js');
@@ -17,47 +22,80 @@ const init = async () => {
 init();
 
 // 开始执行
-let ipcount = 0;
-setTimeout(async function () {
-    let options = {
-        page: 1,
-        type: 'kxdaili',
-        // 随机获取一个个股票代码
-        code: stockList[Math.floor(Math.random() * stockCount)].code,
-    }
+let ipCount = 0;
+let finished = 0;
+let worked = 0;
+const main = async () => {
     let proxyInfo = [];
     // 开心 获取10页
-    for (let i = 1; i <= 10; i++) {
-        proxyInfo = proxyInfo.concat(await ProxyUtils.getProxyInfoByKxdaili(i));
-    }
+    // for (let j = 1; j <= 2; j++) {
+    //     for (let i = 1; i <= 10; i++) {
+    //         proxyInfo = proxyInfo.concat(await ProxyUtils.getProxyInfoByKxdaili(i, j));
+    //     }
+    // }
     // 快代理 获取10页
-    for (let i = 1; i <= 10; i++) {
-        proxyInfo =  proxyInfo.concat(await ProxyUtils.getProxyInfoByKuaidaili(i));
+    for (let i = 1; i <= 3; i++) {
+        proxyInfo = proxyInfo.concat(await ProxyUtils.getProxyInfoByKuaidaili(i));
     }
     // 未知
-    proxyInfo = proxyInfo.concat(await ProxyUtils.getProxyInfoByProxylist());
+    // proxyInfo = proxyInfo.concat(await ProxyUtils.getProxyInfoByProxylist());
 
-    ipcount = proxyInfo.length;
+    // 此次ip总数
+    ipCount = proxyInfo.length;
 
     // 多线程测试代理是否OK
     console.log('开始测试代理是否可用');
+    for (let i = 0; i < proxyInfo.length; i++) {
+        pool.runTask({
+            proxyInfo: proxyInfo[i],
+            code: stockList[Math.floor(Math.random() * stockCount)].code
+        }, async (err, result) => {
+            let test = await ProxyUtils.testProxyInfo(result.proxyInfo, result.code);
+            if (test) {
+                // redis列表不存在
+                if (!await client.sIsMember('proxy', JSON.stringify(result.proxyInfo))) {
+                    // 添加到redis列表
+                    client.lPush('proxy', JSON.stringify(result.proxyInfo));
+                    console.log('添加代理：' + result.proxyInfo.ip + ':' + result.proxyInfo.port);
+                }
 
+                // 有效计数
+                worked++;
+            }
+            if (++finished === ipCount) {
+                finished = 0;
+                worked = 0;
+                console.log(new Date().toLocaleString() + '-全部完成,' + '共' + ipCount + '个代理,有效' + worked + '个');
+                // 每隔5分钟执行一次
+                setTimeout(async function () {
+                    await main();
+                }, 1000 * 60 * 30);
+            }
+        });
+    }
+};
 
-    // await client.set('foo1', 'bar1');
-    // const fooValue = await client.get('foo1');
-    // console.log(fooValue);
-    // 每5分钟执行一次
-    // setTimeout(arguments.callee, 1000);
-}, 1000);
-
+// 开始执行
+main();
 
 // 退出时关闭连接
 process.on('SIGINT', () => {
+    // 关闭工作池
+    pool.close();
     console.log('SIGINT');
     client.quit();
 });
 // 异常时关闭连接
 process.on('uncaughtException', (error) => {
+    // 关闭工作池
+    pool.close();
     console.log('uncaughtException');
     client.quit();
+});
+
+
+process.on('exit', () => {
+    // 关闭工作池
+    pool.close();
+    console.log('exit');
 });

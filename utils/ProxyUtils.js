@@ -4,9 +4,9 @@ const requests = require("request-promise");
 const fs = require('fs');
 
 const ProxyUtils = {
-    getProxyInfoByKxdaili: async function (page) {
+    getProxyInfoByKxdaili: async function (page, type) {
         // 1,开心代理
-        let url = 'http://www.kxdaili.com/dailiip/2/' + page + '.html'
+        let url = 'http://www.kxdaili.com/dailiip/' + type + '/' + page + '.html'
         // 获取代理页面详情
         let html = await ProxyUtils.getProxyHtmlInfo(url);
         // 获取页面代理地址
@@ -81,7 +81,7 @@ const ProxyUtils = {
      * 测试代理地址是否可用
      */
     testProxyInfo: async function (proxy, code) {
-        // 尝试5次, 有一次成功就返回true
+        // 尝试3次, 有一次成功就返回true
         for (let i = 0; i < 3; i++) {
             try {
                 // http://139.9.64.238:443
@@ -116,9 +116,11 @@ const ProxyUtils = {
                 if (response.data && response.data.length > 0 && time < 10000) {
                     return true;
                 }
+                return false;
             } catch (error) {
                 console.log("测试代理：" + code + "!" + '，错误信息：' + error.error.code + ',proxy:' + proxy.ip + ':' + proxy.port);
                 // axios.get('http://127.0.0.1:5010/delete/?proxy=' + error.options.proxy);
+                return false;
             }
         }
 
