@@ -63,9 +63,9 @@ const main = async () => {
                 worked++;
             }
             if (++finished === ipCount) {
+                console.log(new Date().toLocaleString() + '-全部完成,' + '共' + ipCount + '个代理,有效' + worked + '个');
                 finished = 0;
                 worked = 0;
-                console.log(new Date().toLocaleString() + '-全部完成,' + '共' + ipCount + '个代理,有效' + worked + '个');
                 // 每隔5分钟执行一次
                 setTimeout(async function () {
                     await main();
