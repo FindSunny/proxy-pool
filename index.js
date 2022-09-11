@@ -101,7 +101,7 @@ const main = async () => {
                 // 每隔5分钟执行一次
                 timer = setTimeout(async function () {
                     await main();
-                }, 1000 * 60 * 1);
+                }, 1000 * 60 * 5);
             }
         });
     }

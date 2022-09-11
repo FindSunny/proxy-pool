@@ -101,15 +101,17 @@ const ProxyUtils = {
         let proxyInfo = [];
         // 获取代理列表，去重
         for (let i = 0; i < proxyInfoList.length; i++) {
-            // 测试代理地址
-            // 去掉\n\t
-            let info = {
-                ip: proxyInfoList[i].replace('<td>', '').replace('</td>', '').replace(/<td[^>]+>/g, '').replace(/[\n\t]/g, ''),
-                port: proxyInfoList[i + 1].replace('<td>', '').replace('</td>', '').replace(/<td[^>]+>/g, '').replace(/\s/g, '').replace(/[\n\t]/g, ''),
-            }
-            // 去重
-            if (proxyInfo.filter(item => item.ip === info.ip && item.port === info.port).length === 0) {
-                proxyInfo.push(info);
+            if (proxyInfoList[i]) {
+                // 测试代理地址
+                // 去掉\n\t
+                let info = {
+                    ip: proxyInfoList[i].replace('<td>', '').replace('</td>', '').replace(/<td[^>]+>/g, '').replace(/[\n\t]/g, ''),
+                    port: proxyInfoList[i + 1].replace('<td>', '').replace('</td>', '').replace(/<td[^>]+>/g, '').replace(/\s/g, '').replace(/[\n\t]/g, ''),
+                }
+                // 去重
+                if (proxyInfo.filter(item => item.ip === info.ip && item.port === info.port).length === 0) {
+                    proxyInfo.push(info);
+                }
             }
             i++;
         }
@@ -138,7 +140,7 @@ const ProxyUtils = {
                         'Host': 'basic.10jqka.com.cn',
                         'Connection': 'keep-alive',
                         'Accept': 'application/json, text/plain, */*',
-                        'User-Agent': 'Mozilla/5.0 (Linux; Android 11; IN2010 Build/RP1A.201005.001; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/87.0.4280.141 Mobile Safari/537.36',
+                        'User-Agent': 'Mozilla/5.0 (Linux; Android 11; CN1920 Build/RP1A.102005.002; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/87.0.4280.141 Mobile Safari/537.36',
                         'X-Requested-With': 'com.hexin.plat.android',
                         'Sec-Fetch-Site': 'same-origin',
                         'Sec-Fetch-Mode': 'cors',
