@@ -45,14 +45,52 @@ const ProxyUtils = {
         return proxyInfoList;
     },
     /**
+     * 云代理
+     */
+    getProxyInfoByIP3366: async function (page) {
+        let url = 'http://www.ip3366.net/free/?stype=1&page=' + page;
+        // 获取代理页面详情
+        let html = await ProxyUtils.getProxyHtmlInfo(url, 'gb2312');
+        // 获取页面代理地址
+        let proxyInfoList = html.match(/<td>[0123456789.]{2,}<\/td>/g);
+        // 整理代理地址
+        return ProxyUtils.getValidProxyInfo(proxyInfoList);
+    },
+    /**
+     * 66代理
+     */
+    getProxyInfoBy66ip: async function (page) {
+        let url = 'http://www.66ip.cn/' + page + '.html';
+        // 获取代理页面详情
+        let html = await ProxyUtils.getProxyHtmlInfo(url, 'gb2312');
+        // 获取页面代理地址
+        let proxyInfoList = html.match(/<td>[0123456789.]{2,}<\/td>/g);
+        // 整理代理地址
+        return ProxyUtils.getValidProxyInfo(proxyInfoList);
+    },
+    /**
+     * 89代理
+     * @returns 
+     */
+    getProxyInfoBy89ip: async function (page) {
+        let url = 'https://www.89ip.cn/index_' + page + '.html';
+        // 获取代理页面详情
+        let html = await ProxyUtils.getProxyHtmlInfo(url);
+        // 获取页面代理地址
+        let proxyInfoList = html.match(/<td>[0123456789.\n\t]{2,}<\/td>/g);
+        // 整理代理地址
+        return ProxyUtils.getValidProxyInfo(proxyInfoList);
+    },
+
+    /**
      * 获取html页面数据
      */
-    getProxyHtmlInfo: async function (url) {
+    getProxyHtmlInfo: async function (url, encode = 'UTF-8') {
         let response = await axios.get(url, {
             responseType: "arraybuffer"
         });
         let { data } = response;
-        let utf8decoder = new TextDecoder("UTF-8"); // 关键步骤
+        let utf8decoder = new TextDecoder(encode); // 关键步骤
         let html = utf8decoder.decode(data);
         return html;
     },
@@ -64,9 +102,10 @@ const ProxyUtils = {
         // 获取代理列表，去重
         for (let i = 0; i < proxyInfoList.length; i++) {
             // 测试代理地址
+            // 去掉\n\t
             let info = {
-                ip: proxyInfoList[i].replace('<td>', '').replace('</td>', '').replace(/<td[^>]+>/g, ''),
-                port: proxyInfoList[i + 1].replace('<td>', '').replace('</td>', '').replace(/<td[^>]+>/g, '')
+                ip: proxyInfoList[i].replace('<td>', '').replace('</td>', '').replace(/<td[^>]+>/g, '').replace(/[\n\t]/g, ''),
+                port: proxyInfoList[i + 1].replace('<td>', '').replace('</td>', '').replace(/<td[^>]+>/g, '').replace(/\s/g, '').replace(/[\n\t]/g, ''),
             }
             // 去重
             if (proxyInfo.filter(item => item.ip === info.ip && item.port === info.port).length === 0) {
@@ -82,17 +121,18 @@ const ProxyUtils = {
      */
     testProxyInfo: async function (proxy, code) {
         // 尝试3次, 有一次成功就返回true
-        for (let i = 0; i < 3; i++) {
-            try {
+        for (let i = 0; i < 1; i++) {
+            // promise超时处理
+            let timeout = new Promise((resolve, reject) => {
                 // http://139.9.64.238:443
                 // start time
                 let start = new Date().getTime();
-                let response = await requests({
+                let ret = requests({
                     url: 'https://basic.10jqka.com.cn/basicapi/concept/stock_concept_list/?code=' + code,
                     gzip: true,
                     json: true,
                     method: 'GET',
-                    timeout: 10000,
+                    timeout: 5000,
                     proxy: 'http://' + proxy.ip + ':' + proxy.port,
                     headers: {
                         'Host': 'basic.10jqka.com.cn',
@@ -107,23 +147,34 @@ const ProxyUtils = {
                         'Accept-Encoding': 'gzip, deflate',
                         'Accept-Language': 'zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7'
                     }
+                }).then(res => {
+                    // end time
+                    let end = new Date().getTime();
+                    // 耗时
+                    let time = end - start;
+                    // console.log('耗时：', time);
+                    // console.log('测试代理成功,proxy:' + proxy.ip + ':' + proxy.port + '，耗时：' + (end - start) + 'ms');
+                    if (time <= 5000) {
+                        resolve(true);
+                    } else {
+                        resolve(false);
+                    }
+                }).catch(err => {
+                    // console.log('测试代理失败,proxy:' + proxy.ip + ':' + proxy.port);
+                    resolve(false);
                 });
-                // end time
-                let end = new Date().getTime();
-                // time
-                let time = end - start;
-                console.log('测试代理成功,proxy:' + proxy.ip + ':' + proxy.port + '，耗时：' + (end - start) + 'ms');
-                if (response.data && response.data.length > 0 && time < 10000) {
-                    return true;
-                }
-                return false;
-            } catch (error) {
-                console.log("测试代理：" + code + "!" + '，错误信息：' + error.error.code + ',proxy:' + proxy.ip + ':' + proxy.port);
-                // axios.get('http://127.0.0.1:5010/delete/?proxy=' + error.options.proxy);
-                return false;
+                // 超时时间5s
+                setTimeout(() => {
+                    // console.log('测试代理超时,proxy:' + proxy.ip + ':' + proxy.port);
+                    ret.cancel();
+                    resolve(false);
+                }, 5000);
+            });
+            let result = await timeout;
+            if (result) {
+                return true;
             }
         }
-
     },
 
     // 读取指定文件

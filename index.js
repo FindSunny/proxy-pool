@@ -3,6 +3,8 @@ const WorkerPool = require('./worker_pool.js');
 const os = require('os');
 // 创建工作池(取CPU核心数量)
 const pool = new WorkerPool(os.cpus().length);
+// 不限制并发数量
+process.setMaxListeners(0);
 
 const redis = require('redis');
 const ProxyUtils = require('./utils/ProxyUtils.js');
@@ -25,20 +27,46 @@ init();
 let ipCount = 0;
 let finished = 0;
 let worked = 0;
+let timer = null;
 const main = async () => {
+
+    // 去除不可用ip
+    const rmList = await client.sMembers('proxy_invalid');
+    if (rmList.length > 0) {
+        await client.sRem('proxy', rmList);
+    }
+    // 清空不可用ip
+    await client.del('proxy_invalid');
+
+    if (timer) {
+        clearTimeout(timer);
+    }
     let proxyInfo = [];
-    // 开心 获取10页
-    // for (let j = 1; j <= 2; j++) {
-    //     for (let i = 1; i <= 10; i++) {
-    //         proxyInfo = proxyInfo.concat(await ProxyUtils.getProxyInfoByKxdaili(i, j));
-    //     }
-    // }
-    // 快代理 获取10页
+    // 1. 开心 获取10页
+    for (let j = 1; j <= 2; j++) {
+        for (let i = 1; i <= 3; i++) {
+            proxyInfo = proxyInfo.concat(await ProxyUtils.getProxyInfoByKxdaili(i, j));
+        }
+    }
+    // 2. 快代理 获取10页
     for (let i = 1; i <= 3; i++) {
         proxyInfo = proxyInfo.concat(await ProxyUtils.getProxyInfoByKuaidaili(i));
     }
-    // 未知
+    // 未知 （废除）
     // proxyInfo = proxyInfo.concat(await ProxyUtils.getProxyInfoByProxylist());
+
+    // 3. 云代理
+    for (let i = 1; i <= 3; i++) {
+        proxyInfo = proxyInfo.concat(await ProxyUtils.getProxyInfoByIP3366(i));
+    }
+    // 4. 66ip
+    for (let i = 1; i <= 3; i++) {
+        proxyInfo = proxyInfo.concat(await ProxyUtils.getProxyInfoBy66ip(i));
+    }
+    // 5. 89ip
+    for (let i = 1; i <= 3; i++) {
+        proxyInfo = proxyInfo.concat(await ProxyUtils.getProxyInfoBy89ip(i));
+    }
 
     // 此次ip总数
     ipCount = proxyInfo.length;
@@ -52,13 +80,17 @@ const main = async () => {
         }, async (err, result) => {
             let test = await ProxyUtils.testProxyInfo(result.proxyInfo, result.code);
             if (test) {
-                // redis列表不存在
-                if (!await client.sIsMember('proxy', JSON.stringify(result.proxyInfo))) {
-                    // 添加到redis列表
-                    client.lPush('proxy', JSON.stringify(result.proxyInfo));
-                    console.log('添加代理：' + result.proxyInfo.ip + ':' + result.proxyInfo.port);
+                try {
+                    // redis列表不存在
+                    let pos = await client.sIsMember('proxy', JSON.stringify(result.proxyInfo));
+                    if (!pos) {
+                        // 添加到redis列表,加锁
+                        await client.sAdd('proxy', JSON.stringify(result.proxyInfo));
+                        console.log('添加代理：' + result.proxyInfo.ip + ':' + result.proxyInfo.port);
+                    }
+                } catch (err) {
+                    console.log('redis 读写失败：' + err);
                 }
-
                 // 有效计数
                 worked++;
             }
@@ -67,34 +99,42 @@ const main = async () => {
                 finished = 0;
                 worked = 0;
                 // 每隔5分钟执行一次
-                setTimeout(async function () {
+                timer = setTimeout(async function () {
                     await main();
-                }, 1000 * 60 * 30);
+                }, 1000 * 60 * 1);
             }
         });
     }
 };
 
 // 开始执行
-main();
+timer = main();
 
 // 退出时关闭连接
 process.on('SIGINT', () => {
+    if (timer) {
+        clearTimeout(timer);
+    }
     // 关闭工作池
     pool.close();
     console.log('SIGINT');
     client.quit();
 });
-// 异常时关闭连接
+// 异常时打印错误
 process.on('uncaughtException', (error) => {
     // 关闭工作池
-    pool.close();
-    console.log('uncaughtException');
-    client.quit();
+    if (error.name === 'AssertionError') {
+        console.log('Assertion error: name=' + error.name + ', message=' + error.message + ', message=' + error.message);
+    } else {
+        console.log('uncaughtException: ' + error);
+    }
 });
 
 
 process.on('exit', () => {
+    if (timer) {
+        clearTimeout(timer);
+    }
     // 关闭工作池
     pool.close();
     console.log('exit');
