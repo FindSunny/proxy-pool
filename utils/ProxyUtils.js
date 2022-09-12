@@ -73,13 +73,18 @@ const ProxyUtils = {
      * @returns 
      */
     getProxyInfoBy89ip: async function (page) {
-        let url = 'https://www.89ip.cn/index_' + page + '.html';
-        // 获取代理页面详情
-        let html = await ProxyUtils.getProxyHtmlInfo(url);
-        // 获取页面代理地址
-        let proxyInfoList = html.match(/<td>[0123456789.\n\t]{2,}<\/td>/g);
-        // 整理代理地址
-        return ProxyUtils.getValidProxyInfo(proxyInfoList);
+        try {
+            let url = 'https://www.89ip.cn/index_' + page + '.html';
+            // 获取代理页面详情
+            let html = await ProxyUtils.getProxyHtmlInfo(url);
+            // 获取页面代理地址
+            let proxyInfoList = html.match(/<td>[0123456789.\n\t]{2,}<\/td>/g);
+            // 整理代理地址
+            return ProxyUtils.getValidProxyInfo(proxyInfoList);
+        } catch (error) {
+            console.log(error);
+            return [];
+        }
     },
 
     /**
