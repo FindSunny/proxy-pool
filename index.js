@@ -53,9 +53,9 @@ const main = async () => {
         }
     }
     // 2. 快代理 获取10页
-    for (let i = 1; i <= 3; i++) {
-        proxyInfo = proxyInfo.concat(await ProxyUtils.getProxyInfoByKuaidaili(i));
-    }
+    // for (let i = 1; i <= 3; i++) {
+    //     proxyInfo = proxyInfo.concat(await ProxyUtils.getProxyInfoByKuaidaili(i));
+    // }
     // 未知 （废除）
     // proxyInfo = proxyInfo.concat(await ProxyUtils.getProxyInfoByProxylist());
 
@@ -105,7 +105,7 @@ const main = async () => {
                 // 每隔5分钟执行一次
                 timer = setTimeout(async function () {
                     await main();
-                }, 1000 * 60 * 5);
+                }, 1000 * 60 * 3);
             }
         });
     }

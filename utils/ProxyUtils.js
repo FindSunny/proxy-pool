@@ -101,7 +101,7 @@ const ProxyUtils = {
         let proxyInfo = [];
         // 获取代理列表，去重
         for (let i = 0; i < proxyInfoList.length; i++) {
-            if (proxyInfoList[i]) {
+            if (proxyInfoList[i] && proxyInfoList[i + 1]) {
                 // 测试代理地址
                 // 去掉\n\t
                 let info = {
