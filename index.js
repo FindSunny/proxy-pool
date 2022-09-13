@@ -33,11 +33,13 @@ const main = async () => {
 
     // 去除不可用ip
     const rmList = await client.sMembers('proxy_invalid');
-    if (rmList && rmList.length > 100) {
+    if (rmList && rmList.length > 0) {
         try {
             await client.sRem('proxy', rmList);
             // 清空不可用ip
-            await client.del('proxy_invalid');
+            if (rmList.length > 100) {
+                await client.del('proxy_invalid');
+            }
         } catch (error) {
             console.log(error);
         }
