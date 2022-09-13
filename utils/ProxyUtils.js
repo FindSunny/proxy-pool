@@ -5,14 +5,19 @@ const fs = require('fs');
 
 const ProxyUtils = {
     getProxyInfoByKxdaili: async function (page, type) {
-        // 1,开心代理
-        let url = 'http://www.kxdaili.com/dailiip/' + type + '/' + page + '.html'
-        // 获取代理页面详情
-        let html = await ProxyUtils.getProxyHtmlInfo(url);
-        // 获取页面代理地址
-        let proxyInfoList = html.match(/<td>[0123456789.]{2,}<\/td>/g);
-        // 整理代理地址
-        return ProxyUtils.getValidProxyInfo(proxyInfoList);
+        try {
+            // 1,开心代理
+            let url = 'http://www.kxdaili.com/dailiip/' + type + '/' + page + '.html'
+            // 获取代理页面详情
+            let html = await ProxyUtils.getProxyHtmlInfo(url);
+            // 获取页面代理地址
+            let proxyInfoList = html.match(/<td>[0123456789.]{2,}<\/td>/g);
+            // 整理代理地址
+            return ProxyUtils.getValidProxyInfo(proxyInfoList);
+        } catch (error) {
+            console.log(error);
+            return [];
+        }
     },
     getProxyInfoByKuaidaili: async function (page) {
         // 2，快代理
@@ -25,48 +30,64 @@ const ProxyUtils = {
         return ProxyUtils.getValidProxyInfo(proxyInfoList);
     },
     getProxyInfoByProxylist: async function () {
-        // 3，未知
-        let url = 'http://proxylist.fatezero.org/proxy.list';
-        // 获取代理页面详情
-        let html = await ProxyUtils.getProxyHtmlInfo(url);
-        // 获取页面代理地址,Json对象
-        let infoList = html.split('\n');
-        let proxyInfoList = [];
-        for (let i = 0; i < infoList.length; i++) {
-            if (!infoList[i]) {
-                continue;
+        try {
+            // 3，未知
+            let url = 'http://proxylist.fatezero.org/proxy.list';
+            // 获取代理页面详情
+            let html = await ProxyUtils.getProxyHtmlInfo(url);
+            // 获取页面代理地址,Json对象
+            let infoList = html.split('\n');
+            let proxyInfoList = [];
+            for (let i = 0; i < infoList.length; i++) {
+                if (!infoList[i]) {
+                    continue;
+                }
+                let info = JSON.parse(infoList[i]);
+                proxyInfoList.push({
+                    ip: info.host,
+                    port: info.port
+                });
             }
-            let info = JSON.parse(infoList[i]);
-            proxyInfoList.push({
-                ip: info.host,
-                port: info.port
-            });
+            return proxyInfoList;
+        } catch (error) {
+            console.log(error);
+            return [];
         }
-        return proxyInfoList;
     },
     /**
      * 云代理
      */
     getProxyInfoByIP3366: async function (page) {
-        let url = 'http://www.ip3366.net/free/?stype=1&page=' + page;
-        // 获取代理页面详情
-        let html = await ProxyUtils.getProxyHtmlInfo(url, 'gb2312');
-        // 获取页面代理地址
-        let proxyInfoList = html.match(/<td>[0123456789.]{2,}<\/td>/g);
-        // 整理代理地址
-        return ProxyUtils.getValidProxyInfo(proxyInfoList);
+        try {
+
+            let url = 'http://www.ip3366.net/free/?stype=1&page=' + page;
+            // 获取代理页面详情
+            let html = await ProxyUtils.getProxyHtmlInfo(url, 'gb2312');
+            // 获取页面代理地址
+            let proxyInfoList = html.match(/<td>[0123456789.]{2,}<\/td>/g);
+            // 整理代理地址
+            return ProxyUtils.getValidProxyInfo(proxyInfoList);
+        } catch (error) {
+            console.log(error);
+            return [];
+        }
     },
     /**
      * 66代理
      */
     getProxyInfoBy66ip: async function (page) {
-        let url = 'http://www.66ip.cn/' + page + '.html';
-        // 获取代理页面详情
-        let html = await ProxyUtils.getProxyHtmlInfo(url, 'gb2312');
-        // 获取页面代理地址
-        let proxyInfoList = html.match(/<td>[0123456789.]{2,}<\/td>/g);
-        // 整理代理地址
-        return ProxyUtils.getValidProxyInfo(proxyInfoList);
+        try {
+            let url = 'http://www.66ip.cn/' + page + '.html';
+            // 获取代理页面详情
+            let html = await ProxyUtils.getProxyHtmlInfo(url, 'gb2312');
+            // 获取页面代理地址
+            let proxyInfoList = html.match(/<td>[0123456789.]{2,}<\/td>/g);
+            // 整理代理地址
+            return ProxyUtils.getValidProxyInfo(proxyInfoList);
+        } catch (error) {
+            console.log(error);
+            return [];
+        }
     },
     /**
      * 89代理

@@ -28,11 +28,12 @@ let ipCount = 0;
 let finished = 0;
 let worked = 0;
 let timer = null;
+let goodProxy = [];
 const main = async () => {
 
     // 去除不可用ip
     const rmList = await client.sMembers('proxy_invalid');
-    if (rmList && rmList.length > 0) {
+    if (rmList && rmList.length > 100) {
         try {
             await client.sRem('proxy', rmList);
             // 清空不可用ip
@@ -84,22 +85,28 @@ const main = async () => {
         }, async (err, result) => {
             let test = await ProxyUtils.testProxyInfo(result.proxyInfo, result.code);
             if (test) {
-                try {
-                    // redis列表不存在
-                    let pos = await client.sIsMember('proxy', JSON.stringify(result.proxyInfo));
-                    if (!pos) {
-                        // 添加到redis列表,加锁
-                        await client.sAdd('proxy', JSON.stringify(result.proxyInfo));
-                        console.log('添加代理：' + result.proxyInfo.ip + ':' + result.proxyInfo.port);
-                    }
-                } catch (err) {
-                    console.log('redis 读写失败：' + err);
-                }
+                goodProxy.push(result.proxyInfo);
                 // 有效计数
                 worked++;
             }
             if (++finished === ipCount) {
-                console.log(new Date().toLocaleString() + '-全部完成,' + '共' + ipCount + '个代理,有效' + worked + '个');
+                // 写入redis
+                try {
+                    // redis列表不存在
+                    for (let i = 0; i < goodProxy.length; i++) {
+                        let pos = await client.sIsMember('proxy', JSON.stringify(goodProxy[i]));
+                        let invlidPos = await client.sIsMember('proxy_invalid', JSON.stringify(goodProxy[i]));
+                        if (!pos && !invlidPos) {
+                            // 添加到redis列表,加锁
+                            await client.sAdd('proxy', JSON.stringify(goodProxy[i]));
+                            console.log('添加代理：' + goodProxy[i].ip + ':' + goodProxy[i].port);
+                        }
+                    }
+                    console.log(new Date().toLocaleString() + '-全部完成,' + '共' + ipCount + '个代理,有效' + worked + '个');
+                } catch (err) {
+                    console.log('redis 读写失败：' + err);
+                }
+                goodProxy = [];
                 finished = 0;
                 worked = 0;
                 // 每隔5分钟执行一次
